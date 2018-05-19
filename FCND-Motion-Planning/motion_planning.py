@@ -1,4 +1,5 @@
 import argparse
+import sys
 import time
 import msgpack
 from enum import Enum, auto
@@ -111,6 +112,22 @@ class MotionPlanning(Drone):
         data = msgpack.dumps(self.waypoints)
         self.connection._master.write(data)
 
+    def load_home(self, file_path):
+        """ Load the lat lon coordinates for start from colliders file.
+        file_path: String for the file path, line 1 must contain the coordinates.
+        """
+        try:
+            print('loading coords')
+            with open(file_path, 'r') as fd:
+                first_line = fd.readline()
+        except Exception as e:
+            print(e)
+            return sys.exit(-1)
+        coords = first_line.replace(',','').split(' ')
+        assert len(coords)==4, "incorrect first line length, missing data"
+        print(first_line)
+        self.set_home_position(float(coords[1]), float(coords[3]), 0)
+
     def plan_path(self):
         self.flight_state = States.PLANNING
         print("Searching for a path ...")
@@ -119,28 +136,24 @@ class MotionPlanning(Drone):
 
         self.target_position[2] = TARGET_ALTITUDE
 
-        # TODO: read lat0, lon0 from colliders into floating point values
-        
-        # TODO: set home position to (lon0, lat0, 0)
+        self.load_home('colliders.csv')
+        local = global_to_local(self.global_position, self.global_home)
+        print(local)
 
-        # TODO: retrieve current global position
- 
-        # TODO: convert to current local position using global_to_local()
-        
         print('global home {0}, position {1}, local position {2}'.format(self.global_home, self.global_position,
                                                                          self.local_position))
         # Read in obstacle map
         data = np.loadtxt('colliders.csv', delimiter=',', dtype='Float64', skiprows=2)
-        
+
         # Define a grid for a particular altitude and safety margin around obstacles
         grid, north_offset, east_offset = create_grid(data, TARGET_ALTITUDE, SAFETY_DISTANCE)
         print("North offset = {0}, east offset = {1}".format(north_offset, east_offset))
         # Define starting point on the grid (this is just grid center)
-        grid_start = (-north_offset, -east_offset)
+        grid_start = tuple(local[:2])
         # TODO: convert start position to current position rather than map center
-        
+
         # Set goal as some arbitrary position on the grid
-        grid_goal = (-north_offset + 10, -east_offset + 10)
+        grid_goal = (grid_start[0]+10, grid_start[1]+10)#(-north_offset + 10, -east_offset + 10)
         # TODO: adapt to set goal as latitude / longitude position and convert
 
         # Run A* to find a path from start to goal

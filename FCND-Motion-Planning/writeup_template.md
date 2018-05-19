@@ -51,11 +51,7 @@ Here's | A | Snappy | Table
 ### Implementing Your Path Planning Algorithm
 
 #### 1. Set your global home position
-Here students should read the first line of the csv file, extract lat0 and lon0 as floating point values and use the self.set_home_position() method to set global home. Explain briefly how you accomplished this in your code.
-
-
-And here is a lovely picture of our downtown San Francisco environment from above!
-![Map of SF](./misc/map.png)
+The home position is loaded in the load_home method.  This method reads the first line of the file as text and removes the comma from it.  Then the text is split on spaces and the necessary values are read from the correct positions.  There is a simple check for the right number of values in the list in case the file has an invalid format.  The values are then cast to floats and used as arguments for set_home_position.
 
 #### 2. Set your current local position
 Here as long as you successfully determine your local position relative to global home you'll be all set. Explain briefly how you accomplished this in your code.

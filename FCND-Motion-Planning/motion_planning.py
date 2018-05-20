@@ -46,6 +46,7 @@ class MotionPlanning(Drone):
             if -1.0 * self.local_position[2] > 0.95 * self.target_position[2]:
                 self.waypoint_transition()
         elif self.flight_state == States.WAYPOINT:
+            print("at ", self.local_position)
             if np.linalg.norm(self.target_position[0:2] - self.local_position[0:2]) < 1.0:
                 if len(self.waypoints) > 0:
                     self.waypoint_transition()
@@ -126,9 +127,15 @@ class MotionPlanning(Drone):
         coords = first_line.replace(',','').split(' ')
         assert len(coords)==4, "incorrect first line length, missing data"
         print(first_line)
-        self.set_home_position(float(coords[1]), float(coords[3]), 0)
+        #Note, order expected is Lon, Lat, Alt
+        self.set_home_position(float(coords[3]), float(coords[1]), 0)
 
     def plan_path(self):
+        def local_to_grid(local_coord):
+            """
+            Convert a local frame to a grid frame location
+            """
+            return (int(np.ceil(local_coord[0]-north_offset)), int(np.ceil(local_coord[1]-east_offset)))
         self.flight_state = States.PLANNING
         print("Searching for a path ...")
         TARGET_ALTITUDE = 5
@@ -138,7 +145,6 @@ class MotionPlanning(Drone):
 
         self.load_home('colliders.csv')
         local = global_to_local(self.global_position, self.global_home)
-        print(local)
 
         print('global home {0}, position {1}, local position {2}'.format(self.global_home, self.global_position,
                                                                          self.local_position))
@@ -148,12 +154,11 @@ class MotionPlanning(Drone):
         # Define a grid for a particular altitude and safety margin around obstacles
         grid, north_offset, east_offset = create_grid(data, TARGET_ALTITUDE, SAFETY_DISTANCE)
         print("North offset = {0}, east offset = {1}".format(north_offset, east_offset))
-        # Define starting point on the grid (this is just grid center)
-        grid_start = tuple(local[:2])
-        # TODO: convert start position to current position rather than map center
+        # Define starting point on the grid
+        grid_start = local_to_grid(local)
 
         # Set goal as some arbitrary position on the grid
-        grid_goal = (grid_start[0]+10, grid_start[1]+10)#(-north_offset + 10, -east_offset + 10)
+        grid_goal = (grid_start[0]+10, grid_start[1]-10)#(-north_offset + 10, -east_offset + 10)
         # TODO: adapt to set goal as latitude / longitude position and convert
 
         # Run A* to find a path from start to goal
